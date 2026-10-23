@@ -1,0 +1,23 @@
+{
+  "name": "tax-withholding-calculator",
+  "version": "1.0.0",
+  "description": "Private, in-browser withholding projector for base salary, RSUs and bonus (federal + California).",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nasirhemed/tax-witholding-calculator.git"
+  },
+  "bugs": {
+    "url": "https://github.com/nasirhemed/tax-witholding-calculator/issues"
+  },
+  "homepage": "https://github.com/nasirhemed/tax-witholding-calculator#readme",
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.7"
+  },
+  "private": true,
+  "type": "module"
+}
