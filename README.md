@@ -9,10 +9,21 @@ and pay stubs never get committed here.
 
 This is an estimator, not tax advice.
 
-## Development
+## Using it
 
 ```sh
 npm install
+npm run build
+```
+
+Then open `dist/index.html` in your browser. It's one self-contained file: you can copy it anywhere
+and open it offline. The built file carries a Content-Security-Policy that blocks all network
+requests.
+
+## Development
+
+```sh
+npm run dev    # local dev server
 npm test
 ```
 
