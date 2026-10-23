@@ -1,0 +1,5 @@
+node_modules/
+dist/
+# Never commit pay stubs or personal data
+*.paystub.txt
+private/
