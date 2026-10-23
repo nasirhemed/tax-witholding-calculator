@@ -3,6 +3,8 @@
   "version": "1.0.0",
   "description": "Private, in-browser withholding projector for base salary, RSUs and bonus (federal + California).",
   "scripts": {
+    "dev": "vite",
+    "build": "vite build",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
@@ -16,6 +18,8 @@
   "homepage": "https://github.com/nasirhemed/tax-witholding-calculator#readme",
   "devDependencies": {
     "typescript": "^5.9.3",
+    "vite": "^6.4.5",
+    "vite-plugin-singlefile": "^2.3.4",
     "vitest": "^3.2.7"
   },
   "private": true,
