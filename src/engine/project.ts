@@ -25,6 +25,8 @@ export interface Projection {
     futureRegularWages: number;
     futureRsuIncome: number;
     futureBonusIncome: number;
+    /** Future RSU income that falls under the $1M supplemental line, where an elected rate applies. */
+    futureRsuUnderMillion: number;
   };
   federal: {
     agi: number;
@@ -104,9 +106,12 @@ export function projectYear(input: ProjectionInput): Projection {
   let supplementalSoFar = ytd.supplementalWages;
   let rsuWithheld = 0;
   let bonusWithheld = 0;
+  let rsuUnderMillion = 0;
   for (const e of events) {
-    if (e.kind === 'rsu') rsuWithheld += federalSupplementalWithholding(e.amount, supplementalSoFar, year, rsuRate);
-    else bonusWithheld += federalSupplementalWithholding(e.amount, supplementalSoFar, year);
+    if (e.kind === 'rsu') {
+      rsuWithheld += federalSupplementalWithholding(e.amount, supplementalSoFar, year, rsuRate);
+      rsuUnderMillion += Math.max(0, Math.min(e.amount, 1_000_000 - supplementalSoFar));
+    } else bonusWithheld += federalSupplementalWithholding(e.amount, supplementalSoFar, year);
     supplementalSoFar += e.amount;
   }
   const regularFederalWithheld = pc.checksRemaining * pc.federalWithholding;
@@ -149,6 +154,7 @@ export function projectYear(input: ProjectionInput): Projection {
       futureRegularWages: futureRegularGross,
       futureRsuIncome: futureRsu,
       futureBonusIncome: futureBonus,
+      futureRsuUnderMillion: rsuUnderMillion,
     },
     federal: {
       agi: federalAgi,

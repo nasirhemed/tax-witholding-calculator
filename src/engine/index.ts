@@ -11,3 +11,4 @@ export {
 export { federalSafeHarbor, californiaSafeHarbor, type SafeHarborResult } from './safeHarbor';
 export { projectYear, type Projection, type WithheldBySource } from './project';
 export { TAX_YEAR_2026 } from './years/2026';
+export { recommend, type Recommendations, type FederalRecommendation, type Recommendation, type Target } from './recommend';

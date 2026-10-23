@@ -1,5 +1,5 @@
 import './styles.css';
-import { projectYear, type Projection, TAX_YEAR_2026 } from './engine';
+import { projectYear, type Projection, recommend, type Recommendations, TAX_YEAR_2026 } from './engine';
 import { button, dateField, h, money, numberField, pct } from './ui/dom';
 import { type AppState, biweeklyChecksLeft, initialState, monthlyVests, toInput } from './ui/state';
 
@@ -8,7 +8,9 @@ const app = document.getElementById('app')!;
 const results = h('section', { class: 'results', 'aria-live': 'polite' });
 
 function recompute(): void {
-  results.replaceChildren(...renderResults(projectYear(toInput(state))));
+  const input = toInput(state);
+  const p = projectYear(input);
+  results.replaceChildren(...renderResults(p), renderAdvice(recommend(p, input, state.target)));
 }
 
 function section(title: string, intro: string | null, ...body: (HTMLElement | null)[]): HTMLElement {
@@ -223,6 +225,64 @@ function renderResults(p: Projection): HTMLElement[] {
       `Estimate for ${y.year}, single filer, standard deduction. Not tax advice.`,
     ),
   ];
+}
+
+function targetToggle(): HTMLElement {
+  const opt = (value: AppState['target'], label: string) => {
+    const r = h('input', { type: 'radio', name: 'target', value, checked: state.target === value }) as HTMLInputElement;
+    r.addEventListener('change', () => { state.target = value; recompute(); });
+    return h('label', { class: 'check' }, r, ` ${label}`);
+  };
+  return h('div', { class: 'toggle', role: 'radiogroup' }, opt('breakEven', 'Owe about $0 in April'), opt('safeHarbor', 'Just avoid the penalty'));
+}
+
+function renderAdvice(r: Recommendations): HTMLElement {
+  const checks = state.paycheck.checksRemaining;
+  const ahead = (by: number) =>
+    state.target === 'breakEven'
+      ? `Over-withheld by about ${money(by)}.`
+      : `Already ${money(by)} past what's needed to avoid a penalty, though you may still owe in April.`;
+  const f = r.federal;
+  const fed: (HTMLElement | null)[] = [];
+  if (f.needed > 0.5) {
+    if (checks > 0) {
+      fed.push(h('li', {}, h('strong', {}, `W-4 Step 4(c): add ${money(f.perPaycheckChange)} per paycheck`), ` for the ${checks} paychecks left.`));
+    }
+    if (f.rsuRate !== undefined) {
+      fed.push(
+        h(
+          'li',
+          {},
+          'Or ',
+          h('strong', {}, `raise your RSU withholding election to ${pct(f.rsuRate)}`),
+          f.perPaycheckWithRsuRate ? `, plus ${money(f.perPaycheckWithRsuRate)} per paycheck on W-4 Step 4(c).` : '. That covers it on its own.',
+        ),
+      );
+    }
+    if (!fed.length) fed.push(h('li', {}, `No paychecks or vests left to fix it. Expect to pay about ${money(f.needed)} when you file.`));
+  } else {
+    fed.push(h('li', {}, `${ahead(-f.needed)} If you have a Step 4(c) extra or an RSU rate above 22%, you can lower it by up to ${money(-f.perPaycheckChange)} per paycheck.`));
+  }
+
+  const c = r.california;
+  const ca =
+    c.needed > 0.5
+      ? checks > 0
+        ? h('li', {}, h('strong', {}, `DE 4 line 2: add ${money(c.perPaycheckChange)} per paycheck`), '. California has no RSU rate election; vests are always withheld at 10.23%.')
+        : h('li', {}, `Expect to pay about ${money(c.needed)} when you file.`)
+      : h('li', {}, `${ahead(-c.needed)} If you have a DE 4 additional amount, you can lower it by up to ${money(-c.perPaycheckChange)} per paycheck.`);
+
+  return h(
+    'article',
+    { class: 'tax advice' },
+    h('h2', {}, 'What to change'),
+    targetToggle(),
+    h('h3', {}, 'Federal'),
+    h('ul', {}, ...fed),
+    h('h3', {}, 'California'),
+    h('ul', {}, ca),
+    h('p', { class: 'fine' }, 'Changes apply from the first paycheck after payroll processes them. Recheck with your next stub.'),
+  );
 }
 
 app.append(

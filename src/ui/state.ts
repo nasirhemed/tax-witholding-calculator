@@ -1,3 +1,4 @@
+import type { Target } from '../engine';
 import type { Bonus, OtherIncome, PriorYear, ProjectionInput, RegularPaycheck, RsuVest, YearToDate } from '../engine';
 import { TAX_YEAR_2026 } from '../engine';
 
@@ -16,6 +17,7 @@ export interface AppState {
   rsuElectedRatePct: number;
   usePriorYear: boolean;
   prior: PriorYear;
+  target: Target;
 }
 
 export function today(): string {
@@ -53,6 +55,7 @@ export function initialState(): AppState {
     rsuElectedRatePct: 22,
     usePriorYear: false,
     prior: { federalTotalTax: 0, federalAgi: 0, californiaTotalTax: 0, californiaAgi: 0 },
+    target: 'breakEven',
   };
 }
 
