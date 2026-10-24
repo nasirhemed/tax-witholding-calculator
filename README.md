@@ -20,6 +20,12 @@ Then open `dist/index.html` in your browser. It's one self-contained file: you c
 and open it offline. The built file carries a Content-Security-Policy that blocks all network
 requests.
 
+## Hosting
+
+Every push to `main` builds the app and publishes it to GitHub Pages (`.github/workflows/pages.yml`).
+To turn it on once: repo Settings → Pages → Source: **GitHub Actions**. The hosted page is the same
+single file, so your numbers still never leave the browser.
+
 ## Development
 
 ```sh
