@@ -1,0 +1,34 @@
+Google LLC
+Pay Statement
+Pay Date	10/23/2026
+Pay Frequency	Biweekly
+Earnings
+Pay Type	Hours	Pay Rate	Current	YTD
+Annual Bonus 0.000000	$0.00	$40,000.00
+Tax Gross- Up 0.000000	$0.00	$120.00
+E-Bike Subscrip 0.000000	$0.00	$0.00
+Group Term Life 0.000000	$12.00	$252.00
+InternetStipend	$0.00	$300.00
+Peer Bonus 0.000000	$0.00	$175.00
+Regular Pay 80.000000	$91.35	$7,308.00	$153,468.00
+Goog Stock Unit 0.000000	$9,000.00	$108,000.00
+Spot Bonus 0.000000	$0.00	$0.00
+Deductions
+Deduction	Employee Current	Employee YTD	Employer Current	Employer YTD
+Bonus 401K Pre	$0.00	$4,000.00	$0.00	$0.00
+Class C Offset	$0.00	$0.00	$0.00	$0.00
+Dental	$10.00	$210.00	$30.00	$630.00
+Group Term Life	$12.00	$252.00	$0.00	$0.00
+LegalAccess	$8.00	$168.00	$0.00	$0.00
+Vision	$3.00	$63.00	$9.00	$189.00
+Taxes
+Tax Based On Current YTD
+Federal Income Tax $16,307.00 $3,800.00 $70,000.00
+Employee Medicare $16,320.00 $300.00 $5,050.00
+Social Security Employee Tax $0.00 $0.00 $11,439.00
+CA State Income Tax $16,307.00 $1,700.00 $27,000.00
+CA Voluntary Plan EE $16,320.00 $212.16 $3,700.00
+Pay Summary
+Gross FIT Taxable Wages Taxes Deductions Net Pay
+Current $16,320.00 $16,307.00 $6,012.16 $33.00 $10,274.84
+YTD $302,315.00 $298,302.00 $117,189.00 $4,693.00 $180,433.00

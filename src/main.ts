@@ -2,12 +2,20 @@ import './styles.css';
 import { projectYear, type Projection, recommend, type Recommendations, TAX_YEAR_2026 } from './engine';
 import { button, dateField, h, money, numberField, pct } from './ui/dom';
 import { type AppState, biweeklyChecksLeft, initialState, monthlyVests, toInput } from './ui/state';
+import { parseStub } from './stub/parse';
+import { readStub } from './stub/toInputs';
 
 const state: AppState = initialState();
 const app = document.getElementById('app')!;
 const results = h('section', { class: 'results', 'aria-live': 'polite' });
 
 function recompute(): void {
+  if (!state.stub && !state.manual) {
+    results.replaceChildren(
+      h('article', { class: 'tax empty' }, h('h2', {}, 'Your result'), h('p', {}, 'Add your latest pay stub to see what you\'ll owe in April and what to change.')),
+    );
+    return;
+  }
   const input = toInput(state);
   const p = projectYear(input);
   results.replaceChildren(...renderResults(p), renderAdvice(recommend(p, input, state.target)));
@@ -69,40 +77,34 @@ function paycheckSection(): HTMLElement {
   );
 }
 
+function regenerateVests(): void {
+  state.vests = state.vestShares > 0 ? monthlyVests(state.ytd.asOf, state.vestDay, state.vestShares) : [];
+}
+
 function vestsSection(): HTMLElement {
-  let fillShares = 0;
-  let fillDay = 25;
-  const rows = state.vests.map((v, i) =>
-    h(
-      'div',
-      { class: 'row' },
-      dateField('Vest date', () => v.date, (d) => { v.date = d; recompute(); }),
-      num('Shares', () => v.shares, (n) => (v.shares = n)),
-      button('Remove', () => { state.vests.splice(i, 1); rerenderForm(); }, 'btn btn-quiet'),
-    ),
-  );
+  const dates = state.vests.map((v) => new Date(`${v.date}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+  const plan = (label: string, get: () => number, set: (v: number) => void, opts: Parameters<typeof numberField>[3] = {}) =>
+    numberField(label, get, (v) => { set(v); regenerateVests(); refreshVestNote(); recompute(); }, opts);
+  const note = h('p', { class: 'field-hint vest-note' });
+  const refreshVestNote = () => {
+    const d = state.vests.map((v) => new Date(`${v.date}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+    note.textContent = d.length ? `Counting ${d.length} vest${d.length > 1 ? 's' : ''} after your stub: ${d.join(', ')}.` : 'No vests counted yet.';
+  };
+  refreshVestNote();
+  void dates;
   return section(
     'RSU vests still to come',
-    'Only vests after the stub date count. Earlier ones are already in the YTD numbers.',
+    'Monthly vests after your stub\'s pay date. Earlier ones are already in the stub.',
     grid(
-      num('Assumed GOOG price at vest', () => state.sharePrice, (v) => (state.sharePrice = v)),
+      plan('Shares per vest', () => state.vestShares, (v) => (state.vestShares = v), { step: 1 }),
+      plan('Vest day of month', () => state.vestDay, (v) => (state.vestDay = v), { step: 1 }),
+      num('Assumed GOOG price', () => state.sharePrice, (v) => (state.sharePrice = v)),
       numberField('Federal withholding rate on RSUs', () => state.rsuElectedRatePct, (v) => { state.rsuElectedRatePct = v; recompute(); }, {
         suffix: '%',
         hint: '22% unless you elected a higher rate',
       }),
     ),
-    h(
-      'div',
-      { class: 'fill' },
-      numberField('Shares per monthly vest', () => fillShares, (v) => (fillShares = v), { step: 1 }),
-      numberField('Day of month', () => fillDay, (v) => (fillDay = v), { step: 1 }),
-      button('Fill monthly vests', () => {
-        state.vests = monthlyVests(state.ytd.asOf, fillDay, fillShares);
-        rerenderForm();
-      }),
-    ),
-    h('div', { class: 'rows' }, ...rows),
-    button('Add a vest', () => { state.vests.push({ date: state.ytd.asOf, shares: 0 }); rerenderForm(); }, 'btn btn-quiet'),
+    note,
   );
 }
 
@@ -158,11 +160,134 @@ function priorSection(): HTMLElement {
   );
 }
 
+function applyStubText(text: string): void {
+  const parsed = parseStub(text);
+  const found = Object.keys(parsed.taxes).length + Object.keys(parsed.earnings).length;
+  if (found === 0) {
+    stubError = 'Couldn\'t find pay stub numbers in that. If it\'s a scanned or redacted PDF, copy the text from the Workday page and paste it instead.';
+    rerenderForm();
+    return;
+  }
+  const r = readStub(parsed, TAX_YEAR_2026, state.rsuElectedRatePct / 100);
+  state.ytd = r.ytd;
+  state.paycheck = { ...r.paycheck, checksRemaining: biweeklyChecksLeft(r.ytd.asOf) };
+  state.stub = {
+    payDate: r.ytd.asOf,
+    ytdRsu: r.ytdRsu,
+    ytdOtherSupplemental: r.ytdOtherSupplemental,
+    currentRsu: r.current.rsu,
+    currentOtherSupplemental: r.current.otherSupplemental,
+    warnings: r.warnings,
+  };
+  stubError = '';
+  regenerateVests();
+  rerenderForm();
+}
+
+let stubError = '';
+
+async function readFile(file: File): Promise<void> {
+  try {
+    if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+      const { pdfText } = await import('./stub/pdf');
+      applyStubText(await pdfText(await file.arrayBuffer()));
+    } else {
+      applyStubText(await file.text());
+    }
+  } catch {
+    stubError = 'Couldn\'t read that file. Try pasting the stub\'s text instead.';
+    rerenderForm();
+  }
+}
+
+function stubSection(): HTMLElement {
+  const input = h('input', { type: 'file', accept: 'application/pdf,.pdf,.txt', class: 'visually-hidden', id: 'stub-file' }) as HTMLInputElement;
+  input.addEventListener('change', () => { if (input.files?.[0]) void readFile(input.files[0]); });
+  const drop = h(
+    'label',
+    { class: 'drop', for: 'stub-file' },
+    h('strong', {}, 'Drop your pay stub PDF here'),
+    h('span', {}, 'or click to choose it. It\'s read on this device and never uploaded.'),
+    input,
+  );
+  drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('over'); });
+  drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+  drop.addEventListener('drop', (e) => {
+    e.preventDefault();
+    drop.classList.remove('over');
+    const f = (e as DragEvent).dataTransfer?.files[0];
+    if (f) void readFile(f);
+  });
+
+  const area = h('textarea', { rows: 3, placeholder: 'Or paste the stub here (select all on the Workday pay statement, copy, paste)' }) as HTMLTextAreaElement;
+  area.addEventListener('paste', () => setTimeout(() => {
+    const text = area.value;
+    area.value = ''; // Don't keep the stub text around.
+    applyStubText(text);
+  }));
+
+  const s = state.stub;
+  const summary = s
+    ? h(
+        'div',
+        { class: 'read' },
+        h('p', { class: 'read-title' }, `Read your stub from ${new Date(`${s.payDate}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`),
+        h(
+          'table',
+          {},
+          h(
+            'tbody',
+            {},
+            ...([
+              ['Federal wages so far', state.ytd.federalTaxableWages],
+              ['RSUs so far', s.ytdRsu],
+              ['Bonuses so far', s.ytdOtherSupplemental],
+              ['Federal tax withheld so far', state.ytd.federalIncomeTaxWithheld],
+              ['CA tax withheld so far', state.ytd.californiaIncomeTaxWithheld],
+              ['Regular paycheck (gross)', state.paycheck.gross],
+              ['Federal tax per regular paycheck', state.paycheck.federalWithholding],
+              ['CA tax per regular paycheck', state.paycheck.californiaWithholding],
+            ] as [string, number][]).map(([l, v]) => h('tr', {}, h('th', { scope: 'row' }, l), h('td', {}, money(v)))),
+          ),
+        ),
+        s.currentRsu || s.currentOtherSupplemental
+          ? h('p', { class: 'field-hint' }, `This stub included ${money(s.currentRsu + s.currentOtherSupplemental)} of RSU or bonus pay. Its flat-rate withholding was taken out of the per-paycheck numbers.`)
+          : null,
+        ...s.warnings.map((w) => h('p', { class: 'warn-line' }, w)),
+      )
+    : null;
+
+  return section(
+    s ? '1. Your pay stub' : '1. Start with your latest pay stub',
+    null,
+    summary,
+    drop,
+    area,
+    stubError ? h('p', { class: 'warn-line' }, stubError) : null,
+    !s && !state.manual ? button('Enter numbers by hand instead', () => { state.manual = true; rerenderForm(); }, 'btn btn-quiet') : null,
+  );
+}
+
+function details(title: string, open: boolean, ...body: HTMLElement[]): HTMLElement {
+  return h('details', { class: 'more', open }, h('summary', {}, title), ...body);
+}
+
 const form = h('form', { class: 'inputs', autocomplete: 'off' });
 form.addEventListener('submit', (e) => e.preventDefault());
 
 function rerenderForm(): void {
-  form.replaceChildren(ytdSection(), paycheckSection(), vestsSection(), bonusSection(), otherSection(), priorSection());
+  const ready = !!state.stub || state.manual;
+  form.replaceChildren(
+    stubSection(),
+    ...(ready
+      ? [
+          vestsSection(),
+          bonusSection(),
+          details('Other income and last year’s tax (optional)', false, otherSection(), priorSection()),
+          details(state.stub ? 'Edit what was read from the stub' : 'Year-to-date and paycheck numbers', !state.stub, ytdSection(), paycheckSection()),
+        ]
+      : []),
+  );
   recompute();
 }
 
