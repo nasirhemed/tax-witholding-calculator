@@ -18,6 +18,22 @@ export interface AppState {
   usePriorYear: boolean;
   prior: PriorYear;
   target: Target;
+  /** Monthly vest plan; `vests` is generated from it. */
+  vestShares: number;
+  vestDay: number;
+  /** What was read from the last stub, for the summary. Numbers only, never the stub text. */
+  stub?: StubSummary;
+  /** The person chose to type numbers in by hand instead of reading a stub. */
+  manual: boolean;
+}
+
+export interface StubSummary {
+  payDate: string;
+  ytdRsu: number;
+  ytdOtherSupplemental: number;
+  currentRsu: number;
+  currentOtherSupplemental: number;
+  warnings: string[];
 }
 
 export function today(): string {
@@ -56,6 +72,9 @@ export function initialState(): AppState {
     usePriorYear: false,
     prior: { federalTotalTax: 0, federalAgi: 0, californiaTotalTax: 0, californiaAgi: 0 },
     target: 'breakEven',
+    vestShares: 0,
+    vestDay: 25,
+    manual: false,
   };
 }
 
